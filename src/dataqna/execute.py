@@ -1,9 +1,29 @@
 import subprocess
 import sys
+import re
 import tempfile
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+def extract_python(
+        code: str
+) -> str | None:
+    
+    if not code:
+        return None
+
+    # Complete fenced block
+    m = re.search(r"```(?:python|py)?[ \t]*\r?\n(.*?)```", code, re.DOTALL | re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+
+    # Opening fence but no closing fence (truncated reply)
+    m = re.search(r"```(?:python|py)?[ \t]*\r?\n(.*)", code, re.DOTALL | re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+
+    return None
 
 def run_python(
         code: str,

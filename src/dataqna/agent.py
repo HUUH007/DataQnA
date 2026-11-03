@@ -35,13 +35,15 @@ def generate_code(
     prompt = f"""
         You are a data analyst. Given the schema and the user's question, write a python code for analysis.
         df and pd already exist. Do not read any file. Use print() to output results.
+        If client ask you generate a chart, charts should be saved into path: Path(".") / "src" / "dataqna" / "output" / "chart_name.png"
         Schema:
         {schema}
 
         User's question:
         {question}
 
-        Respond with the python code only. Do not write any markdown signs
+        Respond with the python code only.
+
     """
 
     response = get_completions_from_messages(model, prompt)
