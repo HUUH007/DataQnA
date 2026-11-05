@@ -1,6 +1,8 @@
 from pathlib import Path
 from . import tools, agent, execute
 
+MODEL = "deepseek:deepseek-flash" 
+
 def customer_input(
         number_conversation: int,
         file_path: Path
@@ -49,9 +51,12 @@ def main():
             continue
         
         schema = tools.schema_extract(file_path)
-        code = execute.extract_python(agent.generate_code("deepseek:deepseek-flash", schema, question))
-        result = execute.run_python(code, file_path)
-        response = agent.generate_response("deepseek:deepseek-flash", schema, code, result, question)
+        code = agent.generate_code(MODEL, schema, question)
+        result, code = execute.run_python(
+            code, file_path, max_retries=1,
+            fix=lambda c, e, t: agent.fix_code(MODEL, c, e, schema)
+        ) 
+        response = agent.generate_response(MODEL, schema, code, result, question)
 
         print()
         print("response > ")

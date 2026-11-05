@@ -3,10 +3,19 @@ import sys
 import re
 import tempfile
 from pathlib import Path
+from collections.abc import Callable
+from dataclasses import dataclass
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-def extract_python(
+@dataclass
+class RunResult:
+    ok: bool
+    stdout: str
+    stderr: str
+    timed_out: bool = False
+
+def _extract_python(
         code: str
 ) -> str | None:
     
@@ -25,11 +34,11 @@ def extract_python(
 
     return None
 
-def run_python(
+def _run_once(
         code: str,
-        csv_path: str,
+        csv_path: Path,
         timeout: int = 20
-) -> str:
+) -> RunResult:
 
     prelude = f"import pandas as pd\ndf = pd.read_csv(r'{csv_path}')\n"
 
@@ -46,8 +55,45 @@ def run_python(
                 cwd=PROJECT_ROOT,
             )
         except subprocess.TimeoutExpired:
-            return f"Error: code took longer than {timeout}s and was stopped."
+            return RunResult(
+                ok = False,
+                stdout = "",
+                stderr = f"Error: code took longer than {timeout}s and was stopped.",
+                timed_out=True
+            )
+        return RunResult(
+            ok = result.returncode == 0,
+            stdout = result.stdout[:4000],
+            stderr = result.stderr[:4000],
+        )
 
-    if result.returncode != 0:
-        return f"Error:\n{result.stderr[-2000:]}"
-    return result.stdout[:4000] or "(no output)"
+
+
+
+def run_python(
+        code: str,
+        csv_path: Path,
+        timeout: int = 20,
+        max_retries: int = 1,
+        fix: Callable[[str, RunResult, int], str] | None = None
+) -> tuple[str, str]:
+    
+    code = _extract_python(code) or code.strip()
+    res = _run_once(code, csv_path, timeout)
+
+    for attempt in range(max_retries + 1):
+        if res.ok:
+            return(res.stdout.strip() or "(no output)"), code
+
+        if attempt == max_retries or fix is None:
+            break
+
+        raw = fix(code, res, timeout) or ""
+        new_code = _extract_python(raw) or raw.strip()
+        if not new_code or new_code == code:
+            break
+
+        code = new_code
+        res = _run_once(code, csv_path, timeout)
+
+    return f"Error:\n{res.stderr or '(timeout)'}", code

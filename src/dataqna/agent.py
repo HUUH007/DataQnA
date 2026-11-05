@@ -79,3 +79,32 @@ def generate_response(
 
     return response
 
+
+def fix_code(
+        model: str,
+        code: str,
+        error: str,
+        schema: str = ""
+) -> str:
+    prompt = f"""
+        The following Python/matplotlib code failed when executed as a script.
+        Fix it so it runs without errors and produces the same analysis/chart.
+
+        Rules:
+        - Keep the same intent and the same output path (src/dataqna/output/...).
+        - df and pd already exist (df is loaded from the csv). Do NOT read any file.
+        - Use print() to output results; do not call plt.show(); call plt.close() at the end.
+        - Use pandas/matplotlib only.
+        - Return ONLY the corrected code in a ```python fenced block, no prose., no prose.
+
+        Schema:
+        {schema}
+
+        Error:
+        {error}
+
+        Code:
+        {code}
+    """
+
+    return get_completions_from_messages(model, prompt)
