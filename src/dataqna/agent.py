@@ -32,6 +32,7 @@ def generate_code(
         schema: str,
         question: str
 ) -> str:
+    
     prompt = f"""
         You are a data analyst. Given the schema and the user's question, write a python code for analysis.
         df and pd already exist. Do not read any file. Use print() to output results.
